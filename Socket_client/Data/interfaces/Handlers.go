@@ -14,10 +14,10 @@ func HandleEvents(e Event, conn net.Conn, clientName string, eventSlice *EventSl
 		if v.Name == e.Event {
 			v.EventProccess(e, conn)
 			return
-		} else {
-			var state *State = &State{Message: "No se puede reconocer el evento", Status: false, Data: nil}
-			state.SendData(conn)
 		}
 
 	}
+
+	var state *State = &State{Message: "No se puede reconocer el evento", Status: false, Data: nil}
+	state.SendData(conn)
 }
