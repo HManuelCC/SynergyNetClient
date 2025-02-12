@@ -48,14 +48,15 @@ func (state State) SendData(client net.Conn) {
 	client.Write([]byte(string(data)))
 }
 
-func ReadData(conn net.Conn, clientName string, eventSlice *EventSlice) {
+func ReadData(conn net.Conn, clientName string, eventSlice *EventSlice, serverStatus chan bool) {
 
 	for {
 		sizeBuffer := make([]byte, 4)
 		_, err := io.ReadFull(conn, sizeBuffer)
 		if err != nil {
 			if err == io.EOF {
-				log.Println("El cliente cerro la conexión")
+				log.Println("El servidor cerro la conexión")
+				serverStatus <- false
 				return
 			} else {
 				fmt.Println("Error al leer el tamaño del mensaje:", err)
