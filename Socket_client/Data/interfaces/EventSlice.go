@@ -3,13 +3,13 @@ package interfaces
 import "net"
 
 type EventString struct {
-	Name          string                           `json:"name"`
-	EventProccess func(event Event, conn net.Conn) `json:"eventProccess"`
+	Name          string                                           `json:"name"`
+	EventProccess func(event Event, conn net.Conn, messagePid int) `json:"eventProccess"`
 }
 
 type EventSlice []EventString
 
-func (e *EventSlice) AddEvent(event string, handleFunction func(event Event, conn net.Conn)) {
+func (e *EventSlice) AddEvent(event string, handleFunction func(event Event, conn net.Conn, messagePid int)) {
 	*e = append(*e, EventString{Name: event, EventProccess: handleFunction})
 }
 
