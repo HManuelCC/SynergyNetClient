@@ -37,7 +37,7 @@ type Event struct {
 
 type State struct {
 	Status      bool        `json:"status"`
-	Message     string      `json:"state"`
+	Message     string      `json:"message"`
 	Error       string      `json:"error"`
 	Data        interface{} `json:"data"`
 	Destination string      `json:"destination"`
@@ -63,7 +63,7 @@ func (m MessageState) ToString() string {
 		m.Status, m.ServerPID, m.Message, m.Error)
 }
 
-func (object Event) SendData(client net.Conn, timeout *time.Duration, response ...ResponseCallback) error {
+func (object Event) SendData(client *Client, timeout *time.Duration, response ...ResponseCallback) error {
 
 	var typeBuf byte = 1
 	var pid int = generatePID()
@@ -84,11 +84,16 @@ func (object Event) SendData(client net.Conn, timeout *time.Duration, response .
 	packet := append([]byte{typeBuf}, sizeBuffer...)
 	packet = append(packet, data...)
 
+	fmt.Println("intentando Escribir en el servidor")
 	// Enviar
-	_, err = client.Write(packet)
+	client.WriteMu.Lock()
+	_, err = client.Conn.Write(packet)
+	client.WriteMu.Unlock()
 	if err != nil {
 		return fmt.Errorf("error al enviar el mensaje: %w", err)
 	}
+
+	fmt.Println("Escrito en el servidor")
 
 	// Registrar proceso para esperar la respuesta
 	process := &Process{
@@ -153,7 +158,7 @@ func (object Event) SendData(client net.Conn, timeout *time.Duration, response .
 	return nil
 }
 
-func (object MessageState) SendData(client net.Conn) {
+func (object MessageState) SendData(client *Client) {
 	var typeBuf byte = 3
 
 	// Convertir a JSON
@@ -173,17 +178,21 @@ func (object MessageState) SendData(client net.Conn) {
 	packet = append(packet, data...)
 
 	// Un solo Write
-	_, err = client.Write(packet)
+	client.WriteMu.Lock()
+	_, err = client.Conn.Write(packet)
+	client.WriteMu.Unlock()
 	if err != nil {
 		log.Println("Error al enviar el mensaje:", err)
 	}
 	//fmt.Println("MensajeState enviado al servidor:", object.ToString())
 }
 
-func (object State) SendData(client net.Conn, messagePid int) {
+func (object State) SendData(client *Client, messagePid int, destination string) {
 
 	var stateResponse *MessageState = &MessageState{Message: "El servidor proceso la solicitud", Status: true, ServerPID: messagePid, Error: "", ProcessStatus: 2}
 	stateResponse.SendData(client)
+
+	object.Destination = destination
 
 	var typeBuf byte = 2
 
@@ -204,17 +213,19 @@ func (object State) SendData(client net.Conn, messagePid int) {
 	packet = append(packet, data...)
 
 	// Un solo Write
-	_, err = client.Write(packet)
+	client.WriteMu.Lock()
+	_, err = client.Conn.Write(packet)
+	client.WriteMu.Unlock()
 	if err != nil {
 		log.Println("Error al enviar el mensaje:", err)
 	}
 }
 
-func ReadData(conn net.Conn, clientName string, eventSlice *EventSlice, serverStatus chan bool, latency float64) {
+func ReadData(conn *Client, clientName string, eventSlice *EventSlice, serverStatus chan bool, latency float64) {
 	for {
 		// Leer primero tipo + tamaño (9 bytes)
 		header := make([]byte, 9)
-		_, err := io.ReadFull(conn, header)
+		_, err := io.ReadFull(conn.Conn, header)
 		if err != nil {
 			if err == io.EOF {
 				log.Println("El servidor cerró la conexión")
@@ -253,12 +264,11 @@ func ReadData(conn net.Conn, clientName string, eventSlice *EventSlice, serverSt
 			// Leer el JSON completo
 			data := make([]byte, messageSize)
 
-			_, err = io.ReadFull(conn, data)
+			_, err = io.ReadFull(conn.Conn, data)
 			if err != nil {
 				log.Println("Error al leer el mensaje:", err)
 				var state *MessageState = &MessageState{Message: "El servidor no puede procesar la solicitud", Status: false, ServerPID: messagePid, Error: err.Error(), ProcessStatus: 2}
 				state.SendData(conn)
-
 			} else {
 				switch msgType {
 				case 1: // Evento
