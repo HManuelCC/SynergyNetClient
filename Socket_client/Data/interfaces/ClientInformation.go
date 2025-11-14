@@ -3,6 +3,7 @@ package interfaces
 import (
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"log"
 	"math/rand"
 	"net"
@@ -187,6 +188,7 @@ func (c *Client) GetConn() net.Conn {
 func (c *Client) Run(useTLS bool, eventSlice *EventSlice) {
 	for {
 		if c.closed.Load() {
+			fmt.Println("Client closed, exiting Run loop")
 			return
 		}
 

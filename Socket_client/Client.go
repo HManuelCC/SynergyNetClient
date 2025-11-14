@@ -11,6 +11,7 @@ var EventSlice *interfaces.EventSlice = &interfaces.EventSlice{}
 
 // NewClient crea el cliente y arranca el bucle de conexión/reconexión.
 func NewClient(host, port, clientName string, apiKey *string, useTLS bool) *interfaces.Client {
+
 	c := interfaces.NewClientHost(host, port, clientName, apiKey, useTLS)
 
 	go c.Run(useTLS, EventSlice)

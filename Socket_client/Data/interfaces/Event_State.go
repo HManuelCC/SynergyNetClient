@@ -189,10 +189,11 @@ func (object MessageState) SendData(client *Client) {
 
 func (object State) SendData(client *Client, messagePid int, destination string) {
 
-	var stateResponse *MessageState = &MessageState{Message: "El servidor proceso la solicitud", Status: true, ServerPID: messagePid, Error: "", ProcessStatus: 2}
+	var stateResponse *MessageState = &MessageState{Message: "El servidor proceso la solicitud", Status: true, ServerPID: messagePid, Error: "", ProcessStatus: 1}
 	stateResponse.SendData(client)
 
 	object.Destination = destination
+	object.PID = messagePid
 
 	var typeBuf byte = 2
 
@@ -230,7 +231,7 @@ func ReadData(conn *Client, clientName string, eventSlice *EventSlice, serverSta
 			if err == io.EOF {
 				log.Println("El servidor cerró la conexión")
 				serverStatus <- false
-				conn.Close()
+				conn.ClearConn()
 				return
 			}
 
@@ -239,29 +240,20 @@ func ReadData(conn *Client, clientName string, eventSlice *EventSlice, serverSta
 				log.Println("Error al leer el encabezado:", err)
 				var state *MessageState = &MessageState{Message: "El servidor no puede procesar la solicitud", Status: false, ServerPID: 0, Error: "", ProcessStatus: 2}
 				state.SendData(conn)
-				continue // 🔴 seguimos con el loop, no cerramos
+				continue
 			}
 
 			// Errores permanentes: notificamos y terminamos
 			log.Println("Error al leer encabezado, cerrando conexión:", err)
 			serverStatus <- false
-			conn.Close()
+			conn.ClearConn()
 			return
 
 		} else {
-
-			// Primer byte = tipo
 			msgType := header[0]
-			// Siguientes 4 bytes = PID
 			messagePidBuffer := binary.BigEndian.Uint32(header[1:5])
-			//convertimos a int
 			messagePid := int(messagePidBuffer)
-			// Siguientes 4 bytes = tamaño
 			messageSize := binary.BigEndian.Uint32(header[5:9])
-
-			//fmt.Println("Server PID:", messagePid)
-
-			// Leer el JSON completo
 			data := make([]byte, messageSize)
 
 			_, err = io.ReadFull(conn.Conn, data)

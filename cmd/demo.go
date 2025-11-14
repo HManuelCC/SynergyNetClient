@@ -11,7 +11,7 @@ import (
 func main() {
 	createEvents()
 
-	testConn := SynergyNetClient.NewClient("localhost", "443", "test_go", nil, false)
+	testConn := SynergyNetClient.NewClient("localhost", "4430", "test_go", nil, false)
 
 	mux := http.NewServeMux()
 
@@ -19,7 +19,7 @@ func main() {
 
 	go createRoutes(mux, testConn)
 
-	http.ListenAndServe(":8081", mux)
+	http.ListenAndServe(":8080", mux)
 
 	select {}
 }
@@ -32,7 +32,6 @@ func createEvents() {
 			Message: "Hola go",
 			Error:   "",
 			Data:    nil,
-			PID:     event.PID,
 		}
 
 		fmt.Println("Mensaje recibido: ", event.Origen)
@@ -47,7 +46,6 @@ func createEvents() {
 			Message: "Hola amigo",
 			Error:   "",
 			Data:    nil,
-			PID:     event.PID,
 		}
 
 		fmt.Println("Mensaje recibido: ", event.Origen, "Evento: ", event.Event)
