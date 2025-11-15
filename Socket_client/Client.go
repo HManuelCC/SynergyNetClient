@@ -1,7 +1,7 @@
 package SynergyNetClient
 
 import (
-	"github.com/HManuelCC/SynergyNetClient/Socket_client/Data/interfaces"
+	"github.com/HManuelCC/SynergyNetClient/v2/Socket_client/Data/interfaces"
 )
 
 // Reutiliza tu EventSlice global

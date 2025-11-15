@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	SynergyNetClient "github.com/HManuelCC/SynergyNetClient/Socket_client"
+	SynergyNetClient "github.com/HManuelCC/SynergyNetClient/v2/Socket_client"
 )
 
 func main() {
