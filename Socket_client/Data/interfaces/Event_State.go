@@ -273,7 +273,7 @@ func ReadData(conn *Client, clientName string, eventSlice *EventSlice, serverSta
 					// lo mandamos al manejador de eventos
 					var state *MessageState = &MessageState{Message: "El servidor proceso la solicitud", Status: true, ServerPID: messagePid, Error: "", ProcessStatus: 1}
 					state.SendData(conn)
-					HandleEvents(event, conn, clientName, eventSlice, int(latency), messagePid)
+					go HandleEvents(event, conn, clientName, eventSlice, int(latency), messagePid)
 				case 2: // Estado
 					var activeProcess bool = false
 					var state State
