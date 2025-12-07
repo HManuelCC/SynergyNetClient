@@ -1,36 +1,82 @@
-# SynergyNetClient
+# SynergyNet Go Client (Librería)
 
-## Load test tool
+Cliente Go listo para usarse como librería en otros proyectos. Expone tipos y funciones de forma conveniente para que puedas escribir código como:
 
-Se agregó un ejecutable para pruebas de balanceo y tolerancia a fallas en `cmd/loadtest`.
+```go
+import (
+		"fmt"
+		SynergyNetClient "github.com/HManuelCC/SynergyNetClient/Socket_client"
+)
 
-Cubre:
+func main() {
+		c := SynergyNetClient.NewClient("localhost", "443", "my_client", nil, false)
+		defer c.Close()
 
-- Múltiples clientes workers (mismo grupo) que atienden eventos y responden estados.
-- Clientes productores que envían: eventos simples (echo), trabajo (work) y arrays (bulk).
-- Desconexiones aleatorias de algunos workers durante la prueba.
-- Estrés con alto volumen y concurrencia configurables.
+		SynergyNetClient.EventSlice.AddEvent("registro", func(e SynergyNetClient.Event, conn *SynergyNetClient.Client, pid int, dest string) {
+				var s SynergyNetClient.State = SynergyNetClient.State{
+						Status:  true,
+						Message: "Hola amigo",
+						Error:   "",
+						Data:    nil,
+						PID:     e.PID,
+				}
+				s.SendData(conn, pid, dest)
+		})
 
-Cómo construir y ejecutar (requiere que el servidor esté levantado con TLS en el puerto 443):
-
-```bash
-cd SynergyNetClient
-go build ./cmd/loadtest
-./loadtest -host localhost -port 443 \
-	-group WORKER -workers 3 -producers 1 -events 1000 -concurrency 50 \
-	-drop=true -dropAfter 5s -timeout 5s -payload 128 -arrayEvents 10
+		evt := SynergyNetClient.Event{Event: "login", Data: map[string]string{"username": "alice", "password": "pw"}}
+		c.Send(evt, nil, func(resp SynergyNetClient.State) {
+				fmt.Println("Respuesta:", resp.ToString())
+		})
+}
 ```
 
-Flags principales:
+## Instalación
 
-- -group: nombre del grupo de workers (los workers se registran con este nombre para que el servidor los balancee por latencia).
-- -workers: cantidad de clientes en el grupo.
-- -producers: cantidad de productores que envían eventos.
-- -events: eventos totales a enviar entre todos los productores.
-- -concurrency: máximos eventos en vuelo por productor.
-- -drop: simular caídas de algunos workers en medio de la prueba.
-- -arrayEvents: registra handlers adicionales en los workers para simular que soportan muchos tipos de eventos.
+- Requiere Go 1.20+
+- Añade el módulo a tu proyecto (si lo publicas o lo usas localmente, ajusta el path):
 
-Métricas impresas al final:
+```sh
+go get github.com/HManuelCC/SynergyNetClient@latest
+```
 
-- enviados, confirmados (acks), fallidos/timeout, latencia promedio y throughput.
+Si estás trabajando con el repo local, usa `replace` en tu `go.mod`:
+
+```go
+replace github.com/HManuelCC/SynergyNetClient => ../ruta/local/Clients/Go
+```
+
+## API expuesta
+
+- `NewClient(host, port, clientName string, apiKey *string, useTLS bool) *Client`
+  - Crea y arranca el bucle de conexión/reconexión.
+- `EventSlice`
+  - Registro y eliminación de eventos: `AddEvent(name, func)`, `RemoveEvent(name)`.
+- Tipos accesibles en el paquete superior:
+  - `Event`, `State`, `MessageState`, `Client`, `EventsSubscribed`, `Process`, `ResponseCallback`.
+  - Son alias directos de `Data/interfaces`, no se modificó funcionalidad.
+
+## Protocolo
+
+- Cliente→Servidor:
+  - Event/State/MessageState: `[tipo(1)][tamaño(4)][JSON]` (PID dentro del JSON)
+- Servidor→Cliente:
+  - `[tipo(1)][PID(4)][tamaño(4)][JSON]`
+- Orden de ack:
+  - Al recibir `Event`: se envía `MessageState(process_status=1)`.
+  - Al responder `State`: primero `MessageState(process_status=2)`, luego `State`.
+
+## Ejemplo HTTP (como `cmd/demo.go`)
+
+Consulta `cmd/demo.go` para un ejemplo de servidor HTTP que envía un evento `login` y registra el handler `registro`.
+
+Arranque rápido:
+
+```sh
+cd Clients/Go
+go run cmd/demo.go
+```
+
+## Notas
+
+- No se modificó ninguna funcionalidad existente; solo se añadió `exports.go` con alias para consumir la API desde el paquete superior.
+- TLS: el cliente soporta TLS (equivalente a `InsecureSkipVerify`), ajusta `useTLS` según tus certificados.
